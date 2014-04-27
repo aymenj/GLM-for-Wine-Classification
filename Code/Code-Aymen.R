@@ -162,3 +162,26 @@ write.csv(predictions,"simple_logistic_regression_corrected.csv",row.names = T)
 
 back = step(logistic,direction="backward")
 summary(back)
+
+formula3 = good~volatile.acidity+residual.sugar+pH+sulphates+alcohol+free.so2
+logistic3 = glm(formula3,family=binomial, data=train)
+summary(logistic3)
+
+val.10.fold <- cv.glm(data=train, glmfit=logistic3,cost=logloss, K=10)
+val.10.fold$delta
+
+
+formula4 = good~fixed.acidity*volatile.acidity+citric.acid*residual.sugar+chlorides+pH*sulphates+alcohol*free.so2
+logistic4 = glm(formula4,family=binomial, data=train)
+summary(logistic4)
+
+val.10.fold <- cv.glm(data=train, glmfit=logistic3,cost=logloss, K=10)
+val.10.fold$delta
+anova(logistic3,logistic2,logistic1,test="Chi")
+
+#Removing the Sample with the max cook's distance
+indicesToRemove = c(which.max(wine.cooks),619,2322,322,247,2705,435,2835,2320,1690)
+train2 = train[-indicesToRemove,]
+logistic5 = glm(formula1,family=binomial, data=train2)
+val.10.fold <- cv.glm(data=train2, glmfit=logistic5,cost=logloss, K=10)
+val.10.fold$delta
