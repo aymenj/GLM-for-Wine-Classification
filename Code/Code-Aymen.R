@@ -132,12 +132,29 @@ abline(h=0,lty=2,col="green")
 plot(wine.cooks, type="h", lwd=2,xlab="Observation index",ylab="Cook's distances",main="Cook's distances")
 abline(h=1,lty=2,col="red")
 
+#================
+#Cross-Validation
+#================
+
+logloss <- function(actual, prediction) {
+  epsilon <- .000000000000001
+  yhat <- pmin(pmax(prediction, rep(epsilon)), 1-rep(epsilon))
+  ll <- -mean(actual*log(yhat)
+                   + (1-actual)*log(1 - yhat))
+  return(ll)
+}
+
+
+val.10.fold <- cv.glm(data=train, glmfit=logistic2,cost=logloss, K=10)
+val.10.fold$delta
+
 #==========================
 #Prediction on the test set
 #==========================
 
-predictions = predict(logistic1,test)
-write.csv(predictions,"simple_logistic_regression.csv",row.names = T)
+predictions = predict(logistic1,test,type="response")
+write.csv(predictions,"simple_logistic_regression_corrected.csv",row.names = T)
+
 
 #==================================
 #Second Model: Backward Elimination
