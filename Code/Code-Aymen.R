@@ -10,6 +10,7 @@ library(stats)#For backward model
 library(boot)#For cross-validation
 library(ggplot2)#For plots
 library(arm)#For cook's distances + residuals
+library(car) #For variance inflation factor
 
 #====
 #Data
@@ -82,30 +83,27 @@ order(train[,c('alcohol')],decreasing=T)[c(1:10)] #2320  839   99 1069 1917 3149
 order(train[,c('free.so2')],decreasing=T)[c(1:10)] # 1690 3339 1650 2970 3436  682 1914 2496  767 1345
 order(train[,c('total.so2')],decreasing=T)[c(1:10)] #1690  537 3671 2942 2725  486 3339   69  966 2970
 
-
 #=======================================
 #First Model: Simple Logistic Regression
 #=======================================
 
+#MODEL FITTING
+#-------------
+
+
 formula1 = good~fixed.acidity+volatile.acidity+citric.acid+residual.sugar+chlorides+density+pH+sulphates+alcohol+free.so2+total.so2
 logistic1 = glm(formula1,family=binomial, data=train)
+
 summary(logistic1)
 
 #CORRELATION
+#-----------
 
 vif(logistic1) #remove density which seems to be correlated to residual.sugar
 
-formula2 = good~fixed.acidity+volatile.acidity+citric.acid+residual.sugar+chlorides+pH+sulphates+alcohol+free.so2+total.so2
-logistic2 = glm(formula2,family=binomial, data=train)
-summary(logistic2)
-vif(logistic2)#No correlation anymore
-
-#ANOVA
-
-anova(logistic2, logistic1,test="Chi")
-#Even with correlation , the additive model is statistically significantly better than the one without density.
 
 #RESIDUALS + COOK's DISTANCES
+#----------------------------
 
 wine.fitted = fitted(logistic1) # fitted probabilities
 wine.devresid = residuals(logistic1,type="deviance") # deviance residuals
@@ -132,9 +130,9 @@ abline(h=0,lty=2,col="green")
 plot(wine.cooks, type="h", lwd=2,xlab="Observation index",ylab="Cook's distances",main="Cook's distances")
 abline(h=1,lty=2,col="red")
 
-#================
-#Cross-Validation
-#================
+
+#CROSS-VALIDATION
+#----------------
 
 logloss <- function(actual, prediction) {
   epsilon <- .000000000000001
@@ -148,40 +146,161 @@ logloss <- function(actual, prediction) {
 val.10.fold <- cv.glm(data=train, glmfit=logistic2,cost=logloss, K=10)
 val.10.fold$delta
 
-#==========================
-#Prediction on the test set
-#==========================
+
+#PREDICTION ON THE TEST SET
+#--------------------------
 
 predictions = predict(logistic1,test,type="response")
 write.csv(predictions,"simple_logistic_regression_corrected.csv",row.names = T)
 
 
+#==================================================
+#Second Model: Remove Density to reduce correlation
+#==================================================
+
+
+#MODEL FITTING
+#-------------
+
+formula2 = good~fixed.acidity+volatile.acidity+citric.acid+residual.sugar+chlorides+pH+sulphates+alcohol+free.so2+total.so2
+logistic2 = glm(formula2,family=binomial, data=train)
+
+summary(logistic2)#The model seems a bit worse than the addititve model even if we reduced correlation
+
+
+#CORRELATION
+#-----------
+
+vif(logistic2)#No correlation anymore
+
+
+#ANOVA
+#-----
+
+anova(logistic2, logistic1,test="Chi")
+#Even with correlation , the additive model is statistically significantly better than the one without density.
+
+
+#RESIDUALS + COOK's DISTANCES
+#----------------------------
+
+wine.fitted = fitted(logistic2) # fitted probabilities
+wine.devresid = residuals(logistic2,type="deviance") # deviance residuals
+wine.jresid = rstudent(logistic2) # approximate studentized/jackknifed residuals
+wine.cooks = cooks.distance(logistic2) # approximate Cooks distances
+
+##Fitted Values vs Deviance residuals
+binnedplot(wine.fitted, wine.devresid,
+           xlab="Averaged fitted probabilities",
+           ylab="Averaged deviance residuals",
+           pch=19, col.pts="red", cex.pts=0.5,
+           main="Fitted Values vs deviance residual plot")
+abline(h=0,lty=2,col="green")
+
+##Fitted Values vs Jackknifed residuals
+binnedplot(wine.fitted, wine.jresid,
+           xlab="Averaged fitted probabilities",
+           ylab="Averaged jackknifed residuals",
+           pch=19, col.pts="red", cex.pts=0.5,
+           main="Fitted Values vs jackknifed residual plot")
+abline(h=0,lty=2,col="green")
+
+# Cook's distances
+plot(wine.cooks, type="h", lwd=2,xlab="Observation index",ylab="Cook's distances",main="Cook's distances")
+abline(h=1,lty=2,col="red")
+#One point has a higher cook's distance than the other ones.
+
+
+#===============================================================
+#Third Model: Remove Case with Higher Cook's distance + Outliers
+#===============================================================
+
+#REMOVE SOME CASES
+#-----------------
+
+indicesToRemove = c(which.max(wine.cooks))#,619,2322,322,247,2705,435,2835,2320,1690)
+train3 = train[-indicesToRemove,]
+
+
+#MODEL FITTING
+#-------------
+
+formula3 = good~fixed.acidity+volatile.acidity+citric.acid+residual.sugar+chlorides+density+pH+sulphates+alcohol+free.so2+total.so2
+logistic3 = glm(formula3,family=binomial, data=train3)
+
+summary(logistic3) #The best score for now
+
+#CORRELATION
+#-----------
+
+vif(logistic3)#We still have the correlation problem
+
+
+#RESIDUALS + COOK's DISTANCES
+#----------------------------
+
+wine3.fitted = fitted(logistic3) # fitted probabilities
+wine3.devresid = residuals(logistic3,type="deviance") # deviance residuals
+wine3.jresid = rstudent(logistic3) # approximate studentized/jackknifed residuals
+wine3.cooks = cooks.distance(logistic3) # approximate Cooks distances
+
+##Fitted Values vs Deviance residuals
+binnedplot(wine3.fitted, wine3.devresid,
+           xlab="Averaged fitted probabilities",
+           ylab="Averaged deviance residuals",
+           pch=19, col.pts="red", cex.pts=0.5,
+           main="Fitted Values vs deviance residual plot")
+abline(h=0,lty=2,col="green")
+
+##Fitted Values vs Jackknifed residuals
+binnedplot(wine3.fitted, wine3.jresid,
+           xlab="Averaged fitted probabilities",
+           ylab="Averaged jackknifed residuals",
+           pch=19, col.pts="red", cex.pts=0.5,
+           main="Fitted Values vs jackknifed residual plot")
+abline(h=0,lty=2,col="green")
+
+# Cook's distances
+plot(wine3.cooks, type="h", lwd=2,xlab="Observation index",ylab="Cook's distances",main="Cook's distances")
+abline(h=1,lty=2,col="red")
+#Now the cook's distances seem better
+
+
+#CROSS-VALIDATION
+#----------------
+
+logloss <- function(actual, prediction) {
+  epsilon <- .000000000000001
+  yhat <- pmin(pmax(prediction, rep(epsilon)), 1-rep(epsilon))
+  ll <- -mean(actual*log(yhat)
+              + (1-actual)*log(1 - yhat))
+  return(ll)
+}
+
+
+val.20.fold <- cv.glm(data=train3, glmfit=logistic3,cost=logloss, K=20)
+val.20.fold$delta
+
+
+#PREDICTION ON THE TEST SET
+#--------------------------
+
+predictions = predict(logistic3,test,type="response")
+write.csv(predictions,"third_model.csv",row.names = T)
+
 #==================================
-#Second Model: Backward Elimination
+#Fourth Model: Backward Elimination
 #==================================
 
-back = step(logistic,direction="backward")
+#MODEL FITTING
+#-------------
+
+back = step(logistic1,direction="backward")
 summary(back)
 
-formula3 = good~volatile.acidity+residual.sugar+pH+sulphates+alcohol+free.so2
-logistic3 = glm(formula3,family=binomial, data=train)
-summary(logistic3)
-
-val.10.fold <- cv.glm(data=train, glmfit=logistic3,cost=logloss, K=10)
-val.10.fold$delta
 
 
-formula4 = good~fixed.acidity*volatile.acidity+citric.acid*residual.sugar+chlorides+pH*sulphates+alcohol*free.so2
-logistic4 = glm(formula4,family=binomial, data=train)
-summary(logistic4)
 
-val.10.fold <- cv.glm(data=train, glmfit=logistic3,cost=logloss, K=10)
-val.10.fold$delta
-anova(logistic3,logistic2,logistic1,test="Chi")
 
-#Removing the Sample with the max cook's distance
-indicesToRemove = c(which.max(wine.cooks),619,2322,322,247,2705,435,2835,2320,1690)
-train2 = train[-indicesToRemove,]
-logistic5 = glm(formula1,family=binomial, data=train2)
-val.10.fold <- cv.glm(data=train2, glmfit=logistic5,cost=logloss, K=10)
-val.10.fold$delta
+
+
