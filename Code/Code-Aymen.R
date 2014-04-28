@@ -300,6 +300,23 @@ summary(back)
 
 
 
+#==================================
+#Fifth Model: Categorical Variables
+#==================================
+
+
+#CONVERSION TO FACTORS
+#---------------------
+q = quantile(train$alcohol, (0:3/3))
+train$alcoholFactor = cut(train$alcohol,q, c("small","medium","high"))
+
+formula4 = good~fixed.acidity+volatile.acidity+citric.acid+residual.sugar+chlorides+density+pH+sulphates+alcoholFactor+free.so2+total.so2
+logistic4 = glm(formula4,family=binomial, data=train3)
+
+summary(logistic4)
+
+#MODEL FITTING
+#-------------
 
 
 
