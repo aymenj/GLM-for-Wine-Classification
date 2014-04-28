@@ -318,6 +318,95 @@ summary(logistic4)
 #MODEL FITTING
 #-------------
 
+#=======================================
+#Sixth Model: Basis Expansion of Order 2
+#=======================================
 
+
+#MODEL FITTING
+#-------------
+
+formula6 = good~poly(fixed.acidity,2)+poly(volatile.acidity,2)+poly(citric.acid,2)+poly(residual.sugar,2)+poly(chlorides,2)+poly(density,2)+
+  poly(pH,2)+poly(sulphates,2)+poly(alcohol,2)+poly(free.so2,2)+poly(total.so2,2)
+logistic6 = glm(formula6,family=binomial, data=train3)
+
+summary(logistic6)
+
+
+#CROSS-VALIDATION
+#----------------
+
+val.20.fold <- cv.glm(data=train3, glmfit=logistic6,cost=logloss, K=20)
+val.20.fold$delta[0]
+#0.4951
+
+#==========================================
+#Seventh Model: Backward on Basis Expansion
+#==========================================
+
+back = step(logistic6,direction="backward")
+summary(back)
+
+val.20.fold <- cv.glm(data=train3, glmfit=back,cost=logloss, K=20)
+val.20.fold$delta
+#0.4938
+
+#=======================================
+#Eight Model: Basis Expansion of Order 3
+#=======================================
+
+
+#MODEL FITTING
+#-------------
+
+formula7 = good~poly(fixed.acidity,3)+poly(volatile.acidity,3)+poly(citric.acid,3)+poly(residual.sugar,3)+poly(chlorides,3)+poly(density,3)+
+  poly(pH,3)+poly(sulphates,3)+poly(alcohol,3)+poly(free.so2,3)+poly(total.so2,3)
+logistic7 = glm(formula7,family=binomial, data=train3)
+
+summary(logistic7)
+
+
+#CROSS-VALIDATION
+#----------------
+
+val.20.fold <- cv.glm(data=train3, glmfit=logistic7,cost=logloss, K=20)
+val.20.fold$delta
+#0.4889020
+
+#PREDICTION ON THE TEST SET
+#--------------------------
+
+predictions = predict(logistic7,test,type="response")
+write.csv(predictions,"eight_model.csv",row.names = T)
+
+
+#=======================================
+#Ninth Model: Basis Expansion of Order 4
+#=======================================
+
+
+#MODEL FITTING
+#-------------
+
+Norder = 4
+formula9 = good~poly(fixed.acidity,Norder)+poly(volatile.acidity,Norder)+poly(citric.acid,Norder)+poly(residual.sugar,Norder)+
+  poly(chlorides,Norder)+poly(density,Norder)+poly(pH,Norder)+poly(sulphates,Norder)+poly(alcohol,Norder)+poly(free.so2,Norder)+poly(total.so2,Norder)
+logistic9 = glm(formula9,family=binomial, data=train3)
+
+summary(logistic9)
+
+
+#CROSS-VALIDATION
+#----------------
+
+val.20.fold <- cv.glm(data=train3, glmfit=logistic9,cost=logloss, K=20)
+val.20.fold$delta
+#0.4900438
+
+#PREDICTION ON THE TEST SET
+#--------------------------
+
+predictions = predict(logistic9,test,type="response")
+write.csv(predictions,"ninth_model.csv",row.names = T)
 
 
