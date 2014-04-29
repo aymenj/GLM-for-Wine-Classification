@@ -11,6 +11,8 @@ library(boot)#For cross-validation
 library(ggplot2)#For plots
 library(arm)#For cook's distances + residuals
 library(car) #For variance inflation factor
+library(rpart) #CART
+library(randomForest) #random forests
 
 #====
 #Data
@@ -400,6 +402,33 @@ summary(logistic9)
 #----------------
 
 val.20.fold <- cv.glm(data=train3, glmfit=logistic9,cost=logloss, K=20)
+val.20.fold$delta
+#0.4900438
+
+#PREDICTION ON THE TEST SET
+#--------------------------
+
+predictions = predict(logistic9,test,type="response")
+write.csv(predictions,"ninth_model.csv",row.names = T)
+
+#==========================
+#Tenth Model: Random Forest
+#==========================
+
+
+#MODEL FITTING
+#-------------
+
+formula10 = factor(good)~fixed.acidity+volatile.acidity+citric.acid+residual.sugar+chlorides+density+pH+sulphates+alcohol+free.so2+total.so2
+rf1 = randomForest(formula10,data=train3, na.action=na.roughfix)
+
+summary(logistic9)
+
+
+#CROSS-VALIDATION
+#----------------
+
+val.20.fold <- rfcv(train3[,-12], train3[,12])
 val.20.fold$delta
 #0.4900438
 
